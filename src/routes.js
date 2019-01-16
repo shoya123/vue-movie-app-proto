@@ -3,7 +3,7 @@ import VueRouter from 'vue-router';
 let routes = [
   {
     name: 'home',
-    path: '/',
+    path: '/movies',
     components: {
       'list-router-view': require('./components/Home.vue')
     }
