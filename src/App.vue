@@ -191,7 +191,8 @@ img{
   z-index: 15;
   display: flex;
   @include tablet-min{
-    width: calc(100% - 170px);
+    // width: calc(100% - 170px);
+    width: 100%;
     height: 75px;
     margin-left: 95px;
     border-top: 0;

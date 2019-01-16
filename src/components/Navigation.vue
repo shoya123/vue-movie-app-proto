@@ -21,7 +21,7 @@
           </div>
         </router-link>
       </li>
-      <li class="nav__item nav__item--profile">
+      <!-- <li class="nav__item nav__item--profile">
         <div  class="nav__link nav__link--profile"  @click="requestToken" v-if="!userLoggedIn">
           <div class="nav__link-wrap">
             <svg class="nav__link-icon">
@@ -38,7 +38,7 @@
             <span class="nav__link-title">Profile</span>
           </div>
         </router-link>
-      </li>
+      </li> -->
     </ul>
   </nav>
 </template>
