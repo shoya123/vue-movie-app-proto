@@ -77,11 +77,11 @@ export default {
       favorite: ''
     }
   },
-  // computed: {
-  //   loaded(){
-  //     return this.movieLoaded ? true : false;
-  //   }
-  // },
+  computed: {
+    loaded(){
+      return this.movieLoaded ? true : false;
+    }
+  },
   methods: {
     fetchMovie(id){
       axios.get(`https://api.themoviedb.org/3/movie/${id}?api_key=${storage.apiKey}&language=${storage.language}`)

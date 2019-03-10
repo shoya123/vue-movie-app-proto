@@ -3,10 +3,19 @@ import VueRouter from 'vue-router';
 let routes = [
   {
     name: 'home',
-    path: '/movies',
+    path: '/movies/',
     components: {
-      'list-router-view': require('./components/Home.vue')
-    }
+      'list-router-view': require('./components/Home.vue'),
+      // 'list-router-view': require('./components/DetailPanel.vue') // これを表示させると、Home.vueが表示されなくなる
+    },
+    children: [
+      {
+        path: 'detail',
+        components: {
+          'detail-panel': require('./components/DetailPanel.vue')
+        }
+      }
+    ]
   },
   {
     name: 'home-category',
@@ -20,6 +29,13 @@ let routes = [
     path: '/search/:query',
     components: {
       'search-router-view': require('./components/MoviesList.vue')
+    }
+  },
+  {
+    name: 'discover',
+    path: '/discover/',
+    components: {
+      'discover-router-view': require('./components/MoviesList.vue')
     }
   },
   {
@@ -70,5 +86,12 @@ router.beforeEach((to, from, next) => {
   }
   next();
 });
+
+router.afterEach((to, from) => {
+  console.log(this)
+  console.log(from)
+  console.log('after each')
+  document.querySelector('body').scrollTop = 0;
+})
 
 export default router;

@@ -1,6 +1,7 @@
 <template>
   <li class="movies-item">
-    <a class="movies-item__link" :class="{'no-image': noImage}" :href="'/movie/' + movie.id" @click.prevent="openMoviePopup(movie.id, true)">
+    <router-link class="movies-item__link" :class="{'no-image': noImage}" :to="{path: $route.path, query: queryObjForRouterLink(movie.id)}" @click.native="openMovie">
+    <!-- <a class="movies-item__link" :class="{'no-image': noImage}" :href="'/movie/' + movie.id" @click.prevent="openMoviePopup(movie.id, true)"> -->
       <figure class="movies-item__poster">
         <img v-if="!noImage" class="movies-item__img" src="~assets/placeholder.png" v-img="poster()" alt="">
         <img v-if="noImage" class="movies-item__img is-loaded" src="~assets/no-image.png" alt="">
@@ -8,12 +9,14 @@
       <div class="movies-item__content">
         <p class="movies-item__title">{{ movie.title }}</p>
       </div>
-    </a>
+    <!-- </a> -->
+    </router-link>
   </li>
 </template>
 
 <script>
 import img from '../directives/v-image.js'
+import storage from '../storage.js'
 
 export default {
   props: ['movie'],
@@ -33,8 +36,11 @@ export default {
         this.noImage = true;
       }
     },
-    openMoviePopup(id, event){
-      eventHub.$emit('openMoviePopup', id, event);
+    queryObjForRouterLink(movieId){
+      return storage.util.makeMergeObj(this.$route.query, {movieId: movieId});
+    },
+    openMovie(event){
+      eventHub.$emit('openMovie', event);
     }
   }
 }

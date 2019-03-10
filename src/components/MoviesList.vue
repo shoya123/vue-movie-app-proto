@@ -4,7 +4,7 @@
       <header class="movies__header">
         <h2 class="movies__title">{{ listTitle }}</h2>
         <span class="movies__results" v-if="!shortList">{{ countResults }}</span>
-        <router-link v-if="shortList" class="movies__link" :to="{name: 'home-category', params: {category: category}}">
+        <router-link v-if="shortList" class="movies__link" :to="{name: 'home-category', params: {category: category}, query: $route.query}">
           全て見る
         </router-link>
       </header>
@@ -60,6 +60,20 @@ export default {
     query(){
       return this.$route.params.query || '';
     },
+    getMethodQuery(){
+      return this.$route.query || {};
+    },
+    makeDiscoverQueryStr(){
+      let str = '';
+      let queries = this.getMethodQuery;
+      Object.keys(queries).forEach((key) => {
+        let val = queries[key];
+        if (storage.discoverType.indexOf(key) > -1) {
+          str += `&${key}=${val}`;
+        }
+      });
+      return str;
+    },
     request(){
       if(this.mode == 'search'){
         return `https://api.themoviedb.org/3/search/movie?api_key=${storage.apiKey}&language=ja&query=${this.query}&page=${this.currentPage}`;
@@ -68,6 +82,9 @@ export default {
         return `https://api.themoviedb.org/3/movie/${caregory}?api_key=${storage.apiKey}&language=ja&page=${this.currentPage}`;
       } else if(this.mode == 'favorite') {
         return `https://api.themoviedb.org/3/account/${storage.userId}/favorite/movies?api_key=${storage.apiKey}&session_id=${storage.sessionId}&language=ja&sort_by=created_at.desc&page=${this.currentPage}`;
+      } else if (this.mode == 'discover') {
+        this.listTitle = 'ジャンルで検索： ' + storage.genres[this.$route.query['with_genres']];
+        return `https://api.themoviedb.org/3/discover/movie?api_key=${storage.apiKey}&language=ja${this.makeDiscoverQueryStr}&page=${this.currentPage}`;
       }
     },
     countResults(){
@@ -80,23 +97,23 @@ export default {
   },
   methods: {
     fetchCategory(){
-      axios.get(this.request)
+      return axios.get(this.request)
       .then(function(resp){
-          let data = resp.data;
-          if(this.shortList){
-            this.movies = data.results.slice(0, 5);
-            this.pages = 1;
-            this.results = 5;
-          } else {
-            this.movies = data.results;
-            this.pages = data.total_pages;
-            this.results = data.total_results;
-          }
-          this.listLoaded = true;
-          // Change Page title
-          if(this.type == 'page'){
-            document.title = this.pageTitle;
-          }
+        let data = resp.data;
+        if(this.shortList){
+          this.movies = data.results.slice(0, 5);
+          this.pages = 1;
+          this.results = 5;
+        } else {
+          this.movies = data.results;
+          this.pages = data.total_pages;
+          this.results = data.total_results;
+        }
+        this.listLoaded = true;
+        // Change Page title
+        if(this.type == 'page'){
+          document.title = this.pageTitle;
+        }
       }.bind(this))
       .catch(function(error) {
         this.$router.push({ name: '404' });
@@ -137,10 +154,15 @@ export default {
   watch: {
     query(value){
       this.fetchCategory(value);
+    },
+    makeDiscoverQueryStr(value) {
+      this.fetchCategory(value);
     }
   },
   created(){
     // Set List Title
+    window.router = this.$router;
+    window.route = this.$route;
     if(this.mode == 'search'){
       this.listTitle = storage.categories['search'];
       eventHub.$emit('setSearchQuery');
@@ -149,9 +171,18 @@ export default {
       this.listTitle = storage.categories[caregory];
     } else if(this.mode == 'favorite') {
       this.listTitle = storage.categories['favorite'];
+    } else if(this.mode == 'discover'){
+      this.listTitle = 'ジャンルで検索： ' + storage.genres[this.$route.query['with_genres']];
     }
-    this.fetchCategory();
-    eventHub.$on('updateFavorite', this.updateFavorite);
+    this.fetchCategory()
+      .then(function(resp) {
+        eventHub.$on('updateFavorite', this.updateFavorite);
+        if (!this.$route.query['movieId']) {
+          this.$router.replace('?movieId=' + this.movies[0].id);
+          eventHub.$emit('openMovie');
+          console.log(this.movies[0])
+        }
+      }.bind(this));
   }
 }
 </script>
@@ -168,7 +199,7 @@ export default {
     padding: 25px;
   }
   @include desktop-min{
-    padding: 30px;
+    padding: 30px 0px;
   }
   &__header{
     display: flex;
@@ -182,7 +213,7 @@ export default {
       padding: 16px 25px;
     }
     @include desktop-min{
-      padding: 8px 30px;
+      padding: 10px 30px 15px 30px;
     }
   }
     &__title{
@@ -234,7 +265,7 @@ export default {
         width: 16.66666666666667%;
       }
       @include desktop-min{
-        padding: 30px;
+        padding: 2.5px;
         width: 16.66666666666667%;
       }
     }

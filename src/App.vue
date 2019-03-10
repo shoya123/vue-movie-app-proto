@@ -1,24 +1,35 @@
 <template>
   <div id="app">
-    <navigation></navigation>
-    <header class="header">
-      <div class="header__search">
-        <input class="header__search-input" type="text" v-model.trim="searchQuery" @keyup.enter="search" @blur="search" placeholder="映画を検索">
-        <svg class="header__search-icon">
-          <use xlink:href="#iconSearch"></use>
-        </svg>
-      </div>
-    </header>
+    <!-- <navigation></navigation> -->
+    <transition name="fade">        
+      <search-panel v-if="searchPanelIsVisible"></search-panel>
+    </transition>
 
-      <movie-popup v-if="moviePopupIsVisible" @close="closeMoviePopup" :id="moviePopupId"></movie-popup>
+    <div class="main__window" :class="{'main__window--back': searchPanelIsVisible }">
+      <header class="header">
+        <div class="header__search">
+          <input class="header__search-input" type="text" v-model.trim="searchQuery" @keyup.enter="search" @blur="search" placeholder="映画のタイトルで検索">
+          <svg class="header__search-icon">
+            <use xlink:href="#iconSearch"></use>
+          </svg>
+        </div>
+      </header>
+        <movie-popup v-if="moviePopupIsVisible" @close="closeMoviePopup" :id="moviePopupId"></movie-popup>
+      <section class="main">
+        <vuescroll ref="vs">
+          <transition name="fade" @after-leave="afterLeave">
+            <router-view name="list-router-view" :type="'page'" :mode="'collection'" :key="$route.params.category"></router-view>
+            <router-view name="search-router-view" :type="'page'" :mode="'search'" :key="$route.params.query"></router-view>
+            <router-view name="discover-router-view" :type="'page'" :mode="'discover'"></router-view>
+            <router-view name="page-router-view"></router-view>
+          </transition>
+        </vuescroll>
+      </section>
+      <section class="separate__window">
+        <detail-panel></detail-panel>
+      </section>
 
-    <section class="main">
-      <transition name="fade" @after-leave="afterLeave">
-        <router-view name="list-router-view" :type="'page'" :mode="'collection'" :key="$route.params.category"></router-view>
-        <router-view name="search-router-view" :type="'page'" :mode="'search'" :key="$route.params.query"></router-view>
-        <router-view name="page-router-view"></router-view>
-      </transition>
-    </section>
+    </div>
   </div>
 </template>
 
@@ -27,16 +38,20 @@ import axios from 'axios'
 import storage from './storage.js'
 import Navigation from './components/Navigation.vue'
 import MoviePopup from './components/MoviePopup.vue'
+import DetailPanel from './components/DetailPanel.vue'
+import SearchPanel from './components/SearchPanel.vue'
+import vuescroll from 'vuescroll';
 
 export default {
   name: 'app',
-  components: { Navigation, MoviePopup},
+  components: { Navigation, MoviePopup, DetailPanel, SearchPanel, vuescroll },
   data(){
     return{
       moviePopupIsVisible: false,
       moviePopupHistoryVisible: false,
       moviePopupId: 0,
-      searchQuery: ''
+      searchQuery: '',
+      searchPanelIsVisible: false
     }
   },
   computed: {
@@ -84,6 +99,7 @@ export default {
         document.querySelector('body').classList.remove('hidden');
         document.title = storage.backTitle;
       }
+      eventHub.$emit('openMovie');
     },
     changeHistoryState(){
       if(history.state && history.state.popup){
@@ -96,7 +112,7 @@ export default {
     // Search Methods
     search(){
       if(!this.searchQuery.length) return;
-      this.$router.push({ name: 'search', params: { query: this.queryForRouter }});
+      this.$router.push({ name: 'search', params: { query: this.queryForRouter }, query: {movieId: this.$route.query.movieId }});
     },
     setSearchQuery(clear){
       if(clear){
@@ -113,15 +129,47 @@ export default {
     // Detect if touch device
     isTouchDevice() {
       return 'ontouchstart' in document.documentElement;
+    },
+    popupSearchPanel (e) {
+      if (e.type === 'keydown') {
+        // alt + z
+        if (e.altKey && e.keyCode === 90) {
+          this.searchPanelIsVisible = !this.searchPanelIsVisible;
+          return;
+        }
+      } else {
+        // alt + ホイール
+        if (e.altKey) {
+          let delta = e.deltaY ? -(e.deltaY) : e.wheelDelta ? e.wheelDelta : -(e.detail);
+          if(!this.searchPanelIsVisible && delta <= 0) {
+            this.searchPanelIsVisible = true;
+          } else if(this.searchPanelIsVisible && delta > 0) {
+            this.searchPanelIsVisible = false;
+          }
+          e.preventDefault();
+        }
+      }
+    },
+    closeSearchPanel () {
+      this.searchPanelIsVisible = false;
     }
   },
   created(){
     window.addEventListener('popstate', this.onHistoryState);
     window.addEventListener('pagehide', this.changeHistoryState);
+    window.addEventListener('wheel', this.popupSearchPanel);
+    window.addEventListener('keydown', this.popupSearchPanel);
     eventHub.$on('openMoviePopup', this.openMoviePopup);
     eventHub.$on('setSearchQuery', this.setSearchQuery);
     eventHub.$on('requestToken', this.requestToken);
     eventHub.$on('setUserStatus', this.setUserStatus);
+    eventHub.$on('closeSearchPanel', this.closeSearchPanel);
+    eventHub.$on('closeSearchPanel', this.closeSearchPanel);
+    eventHub.$on('search', function(val) {
+      this.searchQuery = val;
+      this.search();
+    }.bind(this));
+    
     if (this.isTouchDevice()) {
       document.querySelector('body').classList.add('touch');
     }
@@ -143,6 +191,7 @@ body{
   line-height: 1.6;
   background: $c-light;
   color: $c-dark;
+  overflow: hidden;
   &.hidden{
     overflow: hidden;
   }
@@ -194,9 +243,11 @@ img{
     // width: calc(100% - 170px);
     width: 100%;
     height: 75px;
-    margin-left: 95px;
+    /*margin-left: 95px;*/
+    // border-top: 5px solid #ffe100;
     border-top: 0;
     border-bottom: 0;
+    border-bottom: 1px solid #ddd;
     top: 0;
   }
   &__search{
@@ -230,7 +281,7 @@ img{
         padding: 15px 30px 15px 80px;
       }
       @include desktop-min{
-        padding: 15px 30px 15px 90px;
+        padding: 15px 30px 15px 60px;
       }
     }
     &-icon{
@@ -253,7 +304,7 @@ img{
         left: 50px;
       }
       @include desktop-min{
-        left: 60px;
+        left: 30px;
       }
     }
     &-input:focus + &-icon{
@@ -261,15 +312,32 @@ img{
     }
   }
 }
+#app{
+  height: 100%;
+}
 .main{
-  position: relative;
+  // position: relative;
+  position: fixed;
+  top: 0px;
+  left: 0px;
   padding: 50px 0 0;
+  height: 100%;
+  overflow: auto;
   @include tablet-min{
-    width: calc(100% - 95px);
-    padding: 75px 0 0;
-    margin-left: 95px;
+    // width: calc(100% - 95px);
+    width: 50%;
+    padding: 60px 0 0;
+    /*margin-left: 95px;*/
     position: relative;
   }
+}
+.separate__window {
+  position: fixed;
+  right: 0;
+  top: 75px;
+  width: 50%;
+  background: rgba($c-dark, 0.98);
+  height: 100%;  
 }
 .button{
   display: inline-block;
@@ -295,17 +363,49 @@ img{
     color: $c-white;
   }
 }
-
+#app {
+  perspective: 1px;
+}
+.main__window {
+  position: fixed;
+  transition: all 0.5s;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+.main__window--back {
+  // transform: translate3d(0px,0px,-0.05px);
+  // border: 2px solid #ccc;
+}
+.sub__window {
+  transform: translate3d(-0%,-0%,-0.15px);
+  // display: none;
+  height: 100%;
+  width: 100%;
+  position: fixed;
+  z-index: 1;
+  transition: all 0.3s;
+  opacity: 0;
+  // z-index: -99999;
+  display: block;
+}
+.sub__window--back {
+  // transform: translate3d(-0%,-0%,-0.1px);
+  // z-index: 99999;
+  // opacity: 1;
+}
 
 // router view transition
 .fade-enter-active, .fade-leave-active {
   transition-property: opacity;
-  transition-duration: 0.25s;
+  transition-duration: 0.3s;
+
 }
 .fade-enter-active {
-  transition-delay: 0.25s;
+  // transition-delay: 0.25s;
 }
 .fade-enter, .fade-leave-active {
-  opacity: 0
+  opacity: 0;
 }
+
 </style>
