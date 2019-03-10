@@ -3,7 +3,7 @@ import VueRouter from 'vue-router';
 let routes = [
   {
     name: 'home',
-    path: '/movies/',
+    path: '/',
     components: {
       'list-router-view': require('./components/Home.vue'),
       // 'list-router-view': require('./components/DetailPanel.vue') // これを表示させると、Home.vueが表示されなくなる
